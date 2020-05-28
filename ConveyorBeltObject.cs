@@ -96,48 +96,112 @@ namespace Eco.Mods.TechTree
       this.GetComponent<LinkComponent>().Initialize(1);
     }
 
+    private void PushFront()
+    {
+      Vector3i newPosition = new Vector3i(0, 0, 0);
+      if (_orientation == Orientation.NORTH)
+        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
+      else if (_orientation == Orientation.EAST)
+        newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
+      else if (_orientation == Orientation.SOUTH)
+        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
+      else if (_orientation == Orientation.WEST)
+        newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
+
+      var block = World.GetBlock(newPosition);
+      if (!block.Is<Empty>())
+      {
+        if (block.GetType() != typeof(WorldObjectBlock))
+        {
+          ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+          return;
+        }
+        var obj = (WorldObjectBlock)(block);
+        var o = obj.WorldObjectHandle.Object;
+        PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
+        if (front != null)
+        {
+          Inventory frontStorage = front.Storage;
+          Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+          IEnumerable<ItemStack> stacks = our.Stacks;
+          ItemStack stack = stacks.FirstOrDefault();
+          if (stack != null)
+          {
+            Item itemToGive = stack.Item;
+            if (itemToGive != null && frontStorage != null)
+            {
+              int itemQuantity = stack.Quantity;
+              our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
+            }
+          }
+        }
+      }
+    }
+
+    private void PullFromBack()
+    {
+      Vector3i newPosition = new Vector3i(0, 0, 0);
+      // Invert Orientation
+      if (_orientation == Orientation.NORTH)
+        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
+      else if (_orientation == Orientation.EAST)
+        newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
+      else if (_orientation == Orientation.SOUTH)
+        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
+      else if (_orientation == Orientation.WEST)
+        newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
+
+      var block = World.GetBlock(newPosition);
+      if (!block.Is<Empty>())
+      {
+        if (block.GetType() != typeof(WorldObjectBlock))
+        {
+          ChatManager.ServerMessageToAll(Localizer.Format("Object in back is not storage it's a {0}", block.GetType()), false);
+          return;
+        }
+        var obj = (WorldObjectBlock)(block);
+        var o = obj.WorldObjectHandle.Object;
+
+        // If it's a conveyor skip
+        if (o.DisplayName == DisplayName)
+          return;
+
+        PublicStorageComponent back = o.GetComponent<PublicStorageComponent>();
+        if (back != null)
+        {
+          Inventory backStorage = back.Storage;
+          Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+          IEnumerable<ItemStack> stacks = backStorage.Stacks;
+          ItemStack stack = stacks.FirstOrDefault();
+          if (stack != null)
+          {
+            Item itemToGive = stack.Item;
+            if (itemToGive != null && our != null)
+            {
+              int itemQuantity = stack.Quantity;
+              backStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, our);
+            }
+          }
+        }
+      }
+    }
+
+    private bool isEmpty()
+    {
+      Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+      IEnumerable<ItemStack> stacks = our.Stacks;
+      ItemStack stack = stacks.FirstOrDefault();
+      return (stack == null || stack.Empty);
+    }
+
     public override void Tick()
     {
       if (updateThrottle.DoUpdate)
       {
-        Vector3i newPosition = new Vector3i(0, 0, 0);
-        if (_orientation == Orientation.NORTH)
-          newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
-        else if (_orientation == Orientation.EAST)
-          newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
-        else if (_orientation == Orientation.SOUTH)
-          newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
-        else if (_orientation == Orientation.WEST)
-          newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
-
-        var block = World.GetBlock(newPosition);
-        if (!block.Is<Empty>())
-        {
-          if (block.GetType() != typeof(WorldObjectBlock))
-          {
-            ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
-            return;
-          }
-          var obj = (WorldObjectBlock)(block);
-          var o = obj.WorldObjectHandle.Object;
-          PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-          if (front != null)
-          {
-            Inventory frontStorage = front.Storage;
-            Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-            IEnumerable<ItemStack> stacks = our.Stacks;
-            ItemStack stack = stacks.FirstOrDefault();
-            if (stack != null)
-            {
-              Item itemToGive = stack.Item;
-              if (itemToGive != null && frontStorage != null)
-              {
-                int itemQuantity = stack.Quantity;
-                our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
-              }
-            }
-          }
-        }
+        if (this.isEmpty())
+          PullFromBack();
+        else
+          PushFront();
       }
     }
   }
