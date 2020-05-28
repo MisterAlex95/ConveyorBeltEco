@@ -72,11 +72,11 @@ namespace Eco.Mods.TechTree
         protected override void Initialize()
         {
             base.Initialize();
-            if (this.Rotation.W == 1)
+            if (this.Rotation.W >= 1)
                 _orientation = Orientation.NORTH;
-            else if (this.Rotation.W > 0)
+            else if (this.Rotation.W >= 0)
                 _orientation = Orientation.EAST;
-            else if (this.Rotation.Y == 1)
+            else if (this.Rotation.Y >= 1)
                 _orientation = Orientation.SOUTH;
             else
                 _orientation = Orientation.WEST;
@@ -95,18 +95,15 @@ namespace Eco.Mods.TechTree
             if (_orientation == Orientation.NORTH)
                 newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
             else if (_orientation == Orientation.EAST)
-                newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
+                newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
             else if (_orientation == Orientation.SOUTH)
                 newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
             else if (_orientation == Orientation.WEST)
-                newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
-            else
-                ChatManager.ServerMessageToAll(Localizer.Format("Position {0}", _orientation), false);
+                newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
 
             var block = World.GetBlock(newPosition);
             if (!block.Is<Empty>())
             {
-                ChatManager.ServerMessageToAll(Localizer.Format("zob {0}", block.GetType()), false);
                 if (block.GetType() != typeof(WorldObjectBlock))
                 {
                     ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
@@ -119,12 +116,7 @@ namespace Eco.Mods.TechTree
                 {
                     Inventory frontStorage = front.Storage;
                     Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-                    //       // Display stacks
                     IEnumerable<ItemStack> stacks = our.Stacks;
-                    //   foreach (var stack in stacks)
-                    //   {
-                    //     ChatManager.ServerMessageToAll(Localizer.Format("Position {0}", stack.Item), false);
-                    //   }
                     ItemStack stack = stacks.FirstOrDefault();
                     if (stack != null)
                     {
@@ -134,8 +126,6 @@ namespace Eco.Mods.TechTree
                             int itemQuantity = stack.Quantity;
                             our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
                             ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
-                            // ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
-                            // ChatManager.ServerMessageToAll(Localizer.Format("Give {0} {1} to {2}", itemQuantity, itemToGive, front), false);
                         }
                     }
                 }
