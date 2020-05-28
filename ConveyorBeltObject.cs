@@ -79,6 +79,12 @@ namespace Eco.Mods.TechTree
       var block = World.GetBlock(new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1));
       if (!block.Is<Empty>())
       {
+        ChatManager.ServerMessageToAll(Localizer.Format("zob {0}", block.GetType()), false);
+        if (block.GetType() != typeof(WorldObjectBlock))
+        {
+          ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+          return;
+        }
         var obj = (WorldObjectBlock)(block);
         var o = obj.WorldObjectHandle.Object;
         PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
