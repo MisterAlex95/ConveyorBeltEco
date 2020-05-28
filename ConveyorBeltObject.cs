@@ -58,8 +58,8 @@ namespace Eco.Mods.TechTree
       WEST
     };
     public static readonly Vector3i DefaultDim = new Vector3i(1, 1, 1);
-    PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
 
+    PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
     public override LocString DisplayName { get { return Localizer.DoStr("Conveyor Belt"); } }
     public virtual Type RepresentedItemType { get { return typeof(ConveyorBeltItem); } }
     private Orientation _orientation = Orientation.NORTH;
@@ -73,14 +73,16 @@ namespace Eco.Mods.TechTree
     protected override void Initialize()
     {
       base.Initialize();
-      if (this.Rotation.W >= 1)
+      Vector3 rot = this.Rotation.Right;
+      if (rot.x == 1)
         _orientation = Orientation.NORTH;
-      else if (this.Rotation.W >= 0)
+      else if (rot.y == -1)
         _orientation = Orientation.EAST;
-      else if (this.Rotation.Y >= 1)
+      else if (rot.x == -1)
         _orientation = Orientation.SOUTH;
       else
         _orientation = Orientation.WEST;
+
 
       this.GetComponent<StockpileComponent>().Initialize(DefaultDim);
 
@@ -92,10 +94,8 @@ namespace Eco.Mods.TechTree
 
     public override void Tick()
     {
-
       if (updateThrottle.DoUpdate)
       {
-
         Vector3i newPosition = new Vector3i(0, 0, 0);
         if (_orientation == Orientation.NORTH)
           newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
@@ -130,15 +130,12 @@ namespace Eco.Mods.TechTree
               {
                 int itemQuantity = stack.Quantity;
                 our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
-                ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
               }
             }
           }
 
         }
       }
-      //   ChatManager.ServerMessageToAll(Localizer.Format("YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), false);
-
     }
   }
 }
