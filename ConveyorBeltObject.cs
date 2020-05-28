@@ -68,19 +68,23 @@ namespace Eco.Mods.TechTree
     {
       base.OnCreate(creator);
       StockpileComponent.ClearPlacementArea(creator, this.Position3i, DefaultDim, this.Rotation);
+
+      // ChatManager.ServerMessageToAll(Localizer.Format("ROT x:{0} y:{1} z:{2}", this.Rotation.Right.x, this.Rotation.Right.y, this.Rotation.Right.z), true);
+      // ChatManager.ServerMessageToAll(Localizer.Format("POS x:{0} y:{1} z:{2}", this.Position3i.x, this.Position3i.y, this.Position3i.z), true);
     }
 
     protected override void Initialize()
     {
       base.Initialize();
       Vector3 rot = this.Rotation.Right;
+
       if (rot.x == 1)
         _orientation = Orientation.NORTH;
-      else if (rot.y == -1)
+      else if (rot.z < -0.9 && rot.z > -1.1)
         _orientation = Orientation.EAST;
       else if (rot.x == -1)
         _orientation = Orientation.SOUTH;
-      else
+      else if (rot.z > 0.9 && rot.z < 1.1)
         _orientation = Orientation.WEST;
 
 
@@ -133,7 +137,6 @@ namespace Eco.Mods.TechTree
               }
             }
           }
-
         }
       }
     }
