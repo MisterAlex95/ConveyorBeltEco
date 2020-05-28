@@ -106,40 +106,41 @@ namespace Eco.Mods.TechTree
             var block = World.GetBlock(newPosition);
             if (!block.Is<Empty>())
             {
+                ChatManager.ServerMessageToAll(Localizer.Format("zob {0}", block.GetType()), false);
+                if (block.GetType() != typeof(WorldObjectBlock))
+                {
+                    ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+                    return;
+                }
                 var obj = (WorldObjectBlock)(block);
-                ChatManager.ServerMessageToAll(Localizer.Format("Position {0}", obj), false);
-                //     var o = obj.WorldObjectHandle.Object;
-                //     PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-                //     if (front != null)
-                //     {
-                //         ChatManager.ServerMessageToAll(Localizer.Format("{0}", 1), false);
-                //         Inventory frontStorage = front.Storage;
-                //         ChatManager.ServerMessageToAll(Localizer.Format("{0}", 2), false);
-                //         Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-                //         ChatManager.ServerMessageToAll(Localizer.Format("{0}", 3), false);
-                //         //       // Display stacks
-                //         IEnumerable<ItemStack> stacks = our.Stacks;
-                //         ChatManager.ServerMessageToAll(Localizer.Format("{0}", 4), false);
-                //         //   foreach (var stack in stacks)
-                //         //   {
-                //         //     ChatManager.ServerMessageToAll(Localizer.Format("Position {0}", stack.Item), false);
-                //         //   }
-                //         Item itemToGive = stacks.FirstOrDefault().Item;
-                //         ChatManager.ServerMessageToAll(Localizer.Format("{0}", 5), false);
-                //         if (itemToGive != null && frontStorage != null)
-                //         {
-                //             ChatManager.ServerMessageToAll(Localizer.Format("{0}", 6), false);
-                //             int itemQuantity = stacks.FirstOrDefault().Quantity;
-                //             ChatManager.ServerMessageToAll(Localizer.Format("{0}", 7), false);
-                //             our.MoveItems<Item>(itemQuantity, frontStorage);
-                //             ChatManager.ServerMessageToAll(Localizer.Format("{0}", 8), false);
-                //             ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
-                //             // ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
-                //             // ChatManager.ServerMessageToAll(Localizer.Format("Give {0} {1} to {2}", itemQuantity, itemToGive, front), false);
-                //         }
-                //     }
+                var o = obj.WorldObjectHandle.Object;
+                PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
+                if (front != null)
+                {
+                    Inventory frontStorage = front.Storage;
+                    Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+                    //       // Display stacks
+                    IEnumerable<ItemStack> stacks = our.Stacks;
+                    //   foreach (var stack in stacks)
+                    //   {
+                    //     ChatManager.ServerMessageToAll(Localizer.Format("Position {0}", stack.Item), false);
+                    //   }
+                    ItemStack stack = stacks.FirstOrDefault();
+                    if (stack != null)
+                    {
+                        Item itemToGive = stack.Item;
+                        if (itemToGive != null && frontStorage != null)
+                        {
+                            int itemQuantity = stack.Quantity;
+                            our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
+                            ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
+                            // ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
+                            // ChatManager.ServerMessageToAll(Localizer.Format("Give {0} {1} to {2}", itemQuantity, itemToGive, front), false);
+                        }
+                    }
+                }
+
             }
         }
-
     }
 }
