@@ -41,7 +41,6 @@ namespace Eco.Mods.TechTree
   using Eco.Simulation.WorldLayers.Layers;
   using Eco.Simulation.WorldLayers.Pushers;
 
-
   [Serialized]
   [RequireComponent(typeof(PropertyAuthComponent))]
   [RequireComponent(typeof(PublicStorageComponent))]
@@ -51,10 +50,19 @@ namespace Eco.Mods.TechTree
   [RequireComponent(typeof(StorageComponent))]
   public partial class ConveyorBeltObject : WorldObject, IChatCommandHandler
   {
+    enum Orientation
+    {
+      NORTH = 0,
+      EAST,
+      SOUTH,
+      WEST
+    };
     public static readonly Vector3i DefaultDim = new Vector3i(1, 1, 1);
+    PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
 
     public override LocString DisplayName { get { return Localizer.DoStr("Conveyor Belt"); } }
     public virtual Type RepresentedItemType { get { return typeof(ConveyorBeltItem); } }
+    private Orientation _orientation = Orientation.NORTH;
 
     protected override void OnCreate(User creator)
     {
@@ -65,6 +73,14 @@ namespace Eco.Mods.TechTree
     protected override void Initialize()
     {
       base.Initialize();
+      if (this.Rotation.W >= 1)
+        _orientation = Orientation.NORTH;
+      else if (this.Rotation.W >= 0)
+        _orientation = Orientation.EAST;
+      else if (this.Rotation.Y >= 1)
+        _orientation = Orientation.SOUTH;
+      else
+        _orientation = Orientation.WEST;
 
       this.GetComponent<StockpileComponent>().Initialize(DefaultDim);
 
@@ -76,43 +92,53 @@ namespace Eco.Mods.TechTree
 
     public override void Tick()
     {
-      var block = World.GetBlock(new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1));
-      if (!block.Is<Empty>())
+
+      if (updateThrottle.DoUpdate)
       {
-        if (block.GetType() != typeof(WorldObjectBlock))
+
+        Vector3i newPosition = new Vector3i(0, 0, 0);
+        if (_orientation == Orientation.NORTH)
+          newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
+        else if (_orientation == Orientation.EAST)
+          newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
+        else if (_orientation == Orientation.SOUTH)
+          newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
+        else if (_orientation == Orientation.WEST)
+          newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
+
+        var block = World.GetBlock(newPosition);
+        if (!block.Is<Empty>())
         {
-          ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
-          return;
-        }
-        var obj = (WorldObjectBlock)(block);
-        var o = obj.WorldObjectHandle.Object;
-        PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-        if (front != null)
-        {
-          Inventory frontStorage = front.Storage;
-          Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-          // Display stacks
-          IEnumerable<ItemStack> stacks = our.Stacks;
-          //   foreach (var stack in stacks)
-          //   {
-          //     ChatManager.ServerMessageToAll(Localizer.Format("Position {0}", stack.Item), false);
-          //   }
-          ItemStack stack = stacks.FirstOrDefault();
-          if (stack != null)
+          if (block.GetType() != typeof(WorldObjectBlock))
           {
-            Item itemToGive = stack.Item;
-            if (itemToGive != null && frontStorage != null)
+            ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+            return;
+          }
+          var obj = (WorldObjectBlock)(block);
+          var o = obj.WorldObjectHandle.Object;
+          PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
+          if (front != null)
+          {
+            Inventory frontStorage = front.Storage;
+            Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+            IEnumerable<ItemStack> stacks = our.Stacks;
+            ItemStack stack = stacks.FirstOrDefault();
+            if (stack != null)
             {
-              int itemQuantity = stack.Quantity;
-              our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
-              ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
-              // ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
-              // ChatManager.ServerMessageToAll(Localizer.Format("Give {0} {1} to {2}", itemQuantity, itemToGive, front), false);
+              Item itemToGive = stack.Item;
+              if (itemToGive != null && frontStorage != null)
+              {
+                int itemQuantity = stack.Quantity;
+                our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
+                ChatManager.ServerMessageToAll(Localizer.Format("Give {0}", itemToGive.Type), false);
+              }
             }
           }
+
         }
       }
-    }
+      //   ChatManager.ServerMessageToAll(Localizer.Format("YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), false);
 
+    }
   }
 }
