@@ -135,16 +135,6 @@ namespace Eco.Mods.TechTree
 
     private void PushFront()
     {
-      Vector3i newPosition = new Vector3i(0, 0, 0);
-      if (_orientation == Orientation.NORTH)
-        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
-      else if (_orientation == Orientation.EAST)
-        newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
-      else if (_orientation == Orientation.SOUTH)
-        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
-      else if (_orientation == Orientation.WEST)
-        newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
-
       var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
 
       if (invToPushIn != null)
@@ -171,6 +161,8 @@ namespace Eco.Mods.TechTree
       }
       else
       {
+        Vector3i newPosition = GetNextBlockPosition(false);
+
         var block = World.GetBlock(newPosition);
         if (!block.Is<Empty>())
         {
@@ -190,16 +182,7 @@ namespace Eco.Mods.TechTree
 
     private void PullFromBack()
     {
-      Vector3i newPosition = new Vector3i(0, 0, 0);
-      // Invert Orientation
-      if (_orientation == Orientation.NORTH)
-        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
-      else if (_orientation == Orientation.EAST)
-        newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
-      else if (_orientation == Orientation.SOUTH)
-        newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
-      else if (_orientation == Orientation.WEST)
-        newPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
+      Vector3i newPosition = GetNextBlockPosition(true);
 
       var block = World.GetBlock(newPosition);
       if (!block.Is<Empty>())
@@ -229,6 +212,19 @@ namespace Eco.Mods.TechTree
         if (!stack.Empty) return stack;
       }
       return null;
+    }
+
+    private Vector3i GetNextBlockPosition(bool inverted)
+    {
+      if ((!inverted && _orientation == Orientation.NORTH) || (inverted && _orientation == Orientation.SOUTH))
+        return new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
+      else if ((!inverted && _orientation == Orientation.EAST) || (inverted && _orientation == Orientation.WEST))
+        return new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
+      else if ((!inverted && _orientation == Orientation.SOUTH) || (inverted && _orientation == Orientation.NORTH))
+        return new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
+      else if ((!inverted && _orientation == Orientation.WEST) || (inverted && _orientation == Orientation.EAST))
+        return new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
+      return new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z);
     }
 
     private void MoveFromTo(PublicStorageComponent from, PublicStorageComponent to)
