@@ -204,7 +204,7 @@ namespace Eco.Mods.TechTree
         var invToPullFrom = myInventories != null ? myInventories.FirstOrDefault() : null;
         if (invToPullFrom != null && our != null)
         {
-          OlolMoveFromTo(invToPullFrom, our.Storage);
+          MoveFromTo(invToPullFrom, our.Storage);
         }
       }
     }
@@ -239,9 +239,9 @@ namespace Eco.Mods.TechTree
       if (fromStorage == null) return;
 
       Inventory toStorage = to.Storage;
-      OlolMoveFromTo(fromStorage, toStorage);
+      MoveFromTo(fromStorage, toStorage);
     }
-    private void OlolMoveFromTo(Inventory from, Inventory to)
+    private void MoveFromTo(Inventory from, Inventory to)
     {
       if (to == null) return;
 
