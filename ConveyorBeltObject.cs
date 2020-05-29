@@ -50,21 +50,20 @@ namespace Eco.Mods.TechTree
   [RequireComponent(typeof(StorageComponent))]
   public partial class ConveyorBeltObject : WorldObject, IChatCommandHandler
   {
-    enum Orientation
+    public static readonly Vector3i DefaultDim = new Vector3i(1, 1, 1);
+    public override LocString DisplayName { get { return Localizer.DoStr("Conveyor Belt"); } }
+    public virtual Type RepresentedItemType { get { return typeof(ConveyorBeltItem); } }
+
+    private PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
+    private Orientation _orientation = Orientation.NORTH;
+    private List<Inventory> myInventories = new List<Inventory>();
+    private enum Orientation
     {
       NORTH = 0,
       EAST,
       SOUTH,
       WEST
     };
-    public static readonly Vector3i DefaultDim = new Vector3i(1, 1, 1);
-
-    PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
-    public override LocString DisplayName { get { return Localizer.DoStr("Conveyor Belt"); } }
-    public virtual Type RepresentedItemType { get { return typeof(ConveyorBeltItem); } }
-    private Orientation _orientation = Orientation.NORTH;
-
-    public List<Inventory> myInventories = new List<Inventory>();
 
     protected override void OnCreate(User creator)
     {
@@ -98,6 +97,42 @@ namespace Eco.Mods.TechTree
       this.GetComponent<LinkComponent>().Initialize(1);
     }
 
+    public override void Tick()
+    {
+      if (updateThrottle.DoUpdate)
+      {
+        if (this.isEmpty())
+          PullFromBack();
+        else
+          PushFront();
+      }
+    }
+
+    public override InteractResult OnActInteract(InteractionContext context)
+    {
+      LinkComponent linkC = this.GetComponent<LinkComponent>();
+      ChatManager.ServerMessageToAll(Localizer.Format("OY {0}", context.Player), false);
+      InventoryCollection invCol = linkC.GetSortedLinkedInventories(context.Player.User);
+      if (invCol != null)
+      {
+        IEnumerable<Inventory> inventories = invCol.AllInventories;
+        ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
+        foreach (var inv in inventories)
+        {
+          if (inv.GetType() == typeof(AuthorizationInventory))
+          {
+            ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inv), false);
+            if (!myInventories.Contains((Inventory)inv))
+            {
+              myInventories.Add((Inventory)inv);
+            }
+          }
+        }
+      }
+
+      return base.OnActInteract(context);
+    }
+
     private void PushFront()
     {
       Vector3i newPosition = new Vector3i(0, 0, 0);
@@ -109,10 +144,6 @@ namespace Eco.Mods.TechTree
         newPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
       else if (_orientation == Orientation.WEST)
         newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
-
-      // LinkComponent linkC = this.GetComponent<LinkComponent>();
-      // if (linkC != null)
-      // {
 
       var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
 
@@ -151,52 +182,10 @@ namespace Eco.Mods.TechTree
           var obj = (WorldObjectBlock)(block);
           var o = obj.WorldObjectHandle.Object;
           PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-          if (front != null)
-          {
-            Inventory frontStorage = front.Storage;
-            Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-            IEnumerable<ItemStack> stacks = our.Stacks;
-            ItemStack stack = stacks.FirstOrDefault();
-            if (stack != null)
-            {
-              Item itemToGive = stack.Item;
-              if (itemToGive != null && frontStorage != null)
-              {
-                int itemQuantity = stack.Quantity;
-                our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
-              }
-            }
-          }
+          PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
+          MoveFromTo(our, front);
         }
       }
-
-    }
-
-
-    public override InteractResult OnActInteract(InteractionContext context)
-    {
-      LinkComponent linkC = this.GetComponent<LinkComponent>();
-      ChatManager.ServerMessageToAll(Localizer.Format("OY {0}", context.Player), false);
-      InventoryCollection invCol = linkC.GetSortedLinkedInventories(context.Player.User);
-      if (invCol != null)
-      {
-        IEnumerable<Inventory> inventories = invCol.AllInventories;
-        ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
-        foreach (var inv in inventories)
-        {
-          if (inv.GetType() == typeof(AuthorizationInventory))
-          {
-            ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inv), false);
-            if (!myInventories.Contains((Inventory)inv))
-            {
-              myInventories.Add((Inventory)inv);
-            }
-          }
-
-        }
-      }
-
-      return base.OnActInteract(context);
     }
 
     private void PullFromBack()
@@ -228,23 +217,30 @@ namespace Eco.Mods.TechTree
           return;
 
         PublicStorageComponent back = o.GetComponent<PublicStorageComponent>();
-        if (back != null)
-        {
-          Inventory backStorage = back.Storage;
-          Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-          IEnumerable<ItemStack> stacks = backStorage.Stacks;
-          ItemStack stack = stacks.FirstOrDefault();
-          if (stack != null)
-          {
-            Item itemToGive = stack.Item;
-            if (itemToGive != null && our != null)
-            {
-              int itemQuantity = stack.Quantity;
-              backStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, our);
-            }
-          }
-        }
+        PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
+        MoveFromTo(back, our);
       }
+    }
+
+    private void MoveFromTo(PublicStorageComponent from, PublicStorageComponent to)
+    {
+      if (from == null || to == null) return;
+
+      Inventory fromStorage = from.Storage;
+      if (fromStorage == null) return;
+
+      Inventory toStorage = to.Storage;
+      if (toStorage == null) return;
+
+      IEnumerable<ItemStack> stacks = fromStorage.Stacks;
+      ItemStack stack = stacks.FirstOrDefault();
+      if (stack == null) return;
+
+      Item itemToGive = stack.Item;
+      if (itemToGive == null) return;
+
+      int itemQuantity = stack.Quantity;
+      fromStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, toStorage);
     }
 
     private bool isEmpty()
@@ -253,17 +249,6 @@ namespace Eco.Mods.TechTree
       IEnumerable<ItemStack> stacks = our.Stacks;
       ItemStack stack = stacks.FirstOrDefault();
       return (stack == null || stack.Empty);
-    }
-
-    public override void Tick()
-    {
-      if (updateThrottle.DoUpdate)
-      {
-        if (this.isEmpty())
-          PullFromBack();
-        else
-          PushFront();
-      }
     }
   }
 }
