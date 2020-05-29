@@ -64,11 +64,12 @@ namespace Eco.Mods.TechTree
     public virtual Type RepresentedItemType { get { return typeof(ConveyorBeltItem); } }
     private Orientation _orientation = Orientation.NORTH;
 
+    public List<Inventory> myInventories = new List<Inventory>();
+
     protected override void OnCreate(User creator)
     {
       base.OnCreate(creator);
       StockpileComponent.ClearPlacementArea(creator, this.Position3i, DefaultDim, this.Rotation);
-
       // ChatManager.ServerMessageToAll(Localizer.Format("ROT x:{0} y:{1} z:{2}", this.Rotation.Right.x, this.Rotation.Right.y, this.Rotation.Right.z), true);
       // ChatManager.ServerMessageToAll(Localizer.Format("POS x:{0} y:{1} z:{2}", this.Position3i.x, this.Position3i.y, this.Position3i.z), true);
     }
@@ -89,6 +90,7 @@ namespace Eco.Mods.TechTree
 
 
       this.GetComponent<StockpileComponent>().Initialize(DefaultDim);
+      ChatManager.ServerMessageToAll(Localizer.Format("myInventories {0}", myInventories), false);
 
       PublicStorageComponent storage = this.GetComponent<PublicStorageComponent>();
       storage.Initialize(DefaultDim.x * DefaultDim.z);
@@ -108,51 +110,93 @@ namespace Eco.Mods.TechTree
       else if (_orientation == Orientation.WEST)
         newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
 
-      LinkComponent linkC = this.GetComponent<LinkComponent>();
-      if (linkC != null)
+      // LinkComponent linkC = this.GetComponent<LinkComponent>();
+      // if (linkC != null)
+      // {
+
+      var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
+
+      if (invToPushIn != null)
       {
-        InventoryCollection invCol = linkC.GetSortedLinkedInventories(this.OwnerUser);
-        ChatManager.ServerMessageToAll(Localizer.Format("invCol {0}", invCol), false);
-        if (invCol != null)
+        Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+        IEnumerable<ItemStack> stacks = our.Stacks;
+        ItemStack stack = stacks.FirstOrDefault();
+        if (stack != null)
         {
-          // IEnumerable<Inventory> inventories = invCol.SubInventories;
-          // ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
-          // if (inventories != null && inventories.Length > 0)
-          // {
-          //   // list of inventories
-          //   ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inventories.Length), false);
-          //   return;
-          // }
+          Item itemToGive = stack.Item;
+          if (itemToGive != null && invToPushIn != null)
+          {
+            int itemQuantity = stack.Quantity;
+            our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, invToPushIn);
+          }
+        }
+
+        foreach (Inventory linkedInv in myInventories)
+        {
+          ChatManager.ServerMessageToAll(Localizer.Format("ZOBIBI {0}", linkedInv), false);
+          ChatManager.ServerMessageToAll(Localizer.Format("=)==================="), false);
+
         }
       }
-      // var block = World.GetBlock(newPosition);
-      // if (!block.Is<Empty>())
-      // {
-      //   if (block.GetType() != typeof(WorldObjectBlock))
-      //   {
-      //     ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
-      //     return;
-      //   }
-      //   var obj = (WorldObjectBlock)(block);
-      //   var o = obj.WorldObjectHandle.Object;
-      //   PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-      //   if (front != null)
-      //   {
-      //     Inventory frontStorage = front.Storage;
-      //     Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-      //     IEnumerable<ItemStack> stacks = our.Stacks;
-      //     ItemStack stack = stacks.FirstOrDefault();
-      //     if (stack != null)
-      //     {
-      //       Item itemToGive = stack.Item;
-      //       if (itemToGive != null && frontStorage != null)
-      //       {
-      //         int itemQuantity = stack.Quantity;
-      //         our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
-      //       }
-      //     }
-      //   }
-      // }
+      else
+      {
+        var block = World.GetBlock(newPosition);
+        if (!block.Is<Empty>())
+        {
+          if (block.GetType() != typeof(WorldObjectBlock))
+          {
+            ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+            return;
+          }
+          var obj = (WorldObjectBlock)(block);
+          var o = obj.WorldObjectHandle.Object;
+          PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
+          if (front != null)
+          {
+            Inventory frontStorage = front.Storage;
+            Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+            IEnumerable<ItemStack> stacks = our.Stacks;
+            ItemStack stack = stacks.FirstOrDefault();
+            if (stack != null)
+            {
+              Item itemToGive = stack.Item;
+              if (itemToGive != null && frontStorage != null)
+              {
+                int itemQuantity = stack.Quantity;
+                our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
+              }
+            }
+          }
+        }
+      }
+
+    }
+
+
+    public override InteractResult OnActInteract(InteractionContext context)
+    {
+      LinkComponent linkC = this.GetComponent<LinkComponent>();
+      ChatManager.ServerMessageToAll(Localizer.Format("OY {0}", context.Player), false);
+      InventoryCollection invCol = linkC.GetSortedLinkedInventories(context.Player.User);
+      if (invCol != null)
+      {
+        IEnumerable<Inventory> inventories = invCol.AllInventories;
+        ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
+        foreach (var inv in inventories)
+        {
+          if (inv.GetType() == typeof(AuthorizationInventory))
+          {
+            ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inv), false);
+            if (!myInventories.Contains((Inventory)inv))
+            {
+              myInventories.Add((Inventory)inv);
+            }
+          }
+
+        }
+      }
+
+      return base.OnActInteract(context);
     }
 
     private void PullFromBack()
