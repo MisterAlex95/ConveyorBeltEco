@@ -111,18 +111,14 @@ namespace Eco.Mods.TechTree
     public override InteractResult OnActInteract(InteractionContext context)
     {
       LinkComponent linkC = this.GetComponent<LinkComponent>();
-      ChatManager.ServerMessageToAll(Localizer.Format("OY {0}", context.Player), false);
       InventoryCollection invCol = linkC.GetSortedLinkedInventories(context.Player.User);
       if (invCol != null)
       {
         IEnumerable<Inventory> inventories = invCol.AllInventories;
-        ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
         foreach (var inv in inventories)
         {
-          ChatManager.ServerMessageToAll(Localizer.Format("inv type, {0}", inv.GetType()), false);
           if (inv.GetType() == typeof(AuthorizationInventory) || inv.GetType() == typeof(SelectionInventory))
           {
-            ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inv), false);
             if (!myInventories.Contains((Inventory)inv))
             {
               myInventories.Add((Inventory)inv);
@@ -136,7 +132,6 @@ namespace Eco.Mods.TechTree
 
     private void PushFront()
     {
-      ChatManager.ServerMessageToAll(Localizer.Format("Will push front"), false);
       Vector3i newPosition = GetNextBlockPosition(false);
 
       var blockInFront = World.GetBlock(newPosition);
@@ -266,9 +261,7 @@ namespace Eco.Mods.TechTree
     private bool isEmpty()
     {
       Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-      IEnumerable<ItemStack> stacks = our.Stacks;
-      ItemStack stack = stacks.FirstOrDefault();
-      return (stack == null || stack.Empty);
+      return our.IsEmpty;
     }
   }
 }
