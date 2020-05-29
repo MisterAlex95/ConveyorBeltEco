@@ -222,6 +222,15 @@ namespace Eco.Mods.TechTree
       }
     }
 
+    private ItemStack GetFirstItemStackNotEmpty(IEnumerable<ItemStack> stacks)
+    {
+      foreach (ItemStack stack in stacks)
+      {
+        if (!stack.Empty) return stack;
+      }
+      return null;
+    }
+
     private void MoveFromTo(PublicStorageComponent from, PublicStorageComponent to)
     {
       if (from == null || to == null) return;
@@ -233,7 +242,7 @@ namespace Eco.Mods.TechTree
       if (toStorage == null) return;
 
       IEnumerable<ItemStack> stacks = fromStorage.Stacks;
-      ItemStack stack = stacks.FirstOrDefault();
+      ItemStack stack = GetFirstItemStackNotEmpty(stacks);
       if (stack == null) return;
 
       Item itemToGive = stack.Item;
