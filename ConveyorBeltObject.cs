@@ -137,60 +137,75 @@ namespace Eco.Mods.TechTree
     {
       Vector3i newPosition = GetNextBlockPosition(false);
 
-      var block = World.GetBlock(newPosition);
-      if (!block.Is<Empty>())
+      var blockInFront = World.GetBlock(newPosition);
+      if (blockInFront.Is<Empty>())
       {
-        PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
+        // nothing in front of me
+        return;
+      }
+      PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
 
-        if (block.GetType() != typeof(WorldObjectBlock))
-        {
-          var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
-          if (invToPushIn != null)
-          {
-            Inventory ourStorage = our.Storage;
-            if (ourStorage == null) return;
-            IEnumerable<ItemStack> stacks = ourStorage.Stacks;
-            ItemStack stack = stacks.FirstOrDefault();
-            if (stack != null)
-            {
-              Item itemToGive = stack.Item;
-              if (itemToGive != null && invToPushIn != null)
-              {
-                int itemQuantity = stack.Quantity;
-                ourStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, invToPushIn);
-              }
-            }
-          }
-          else
-          {
-            ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
-          }
-          return;
-        }
-        var obj = (WorldObjectBlock)(block);
+      if (blockInFront.GetType() == typeof(WorldObjectBlock))
+      {
+        // we have another conveyorbelt in front of us (or a not-filled stockpile)
+        var obj = (WorldObjectBlock)(blockInFront);
         var o = obj.WorldObjectHandle.Object;
         PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
         MoveFromTo(our, front);
       }
+      else
+      {
+        // if front is not a worldObjectBlock, try to move self into linked stockpiles
+        var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
+        if (invToPushIn != null)
+        {
+          Inventory ourStorage = our.Storage;
+          if (ourStorage == null) return;
+          IEnumerable<ItemStack> stacks = ourStorage.Stacks;
+          ItemStack stack = stacks.FirstOrDefault();
+          if (stack != null)
+          {
+            Item itemToGive = stack.Item;
+            if (itemToGive != null && invToPushIn != null)
+            {
+              int itemQuantity = DefaultDim.y; //stack.Quantity;
+              ourStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, invToPushIn);
+            }
+          }
+        }
+        else
+        {
+          // ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+        }
+
+      }
+
     }
 
     private void PullFromBack()
     {
       Vector3i newPosition = GetNextBlockPosition(true);
 
-      var block = World.GetBlock(newPosition);
-      if (!block.Is<Empty>())
+      var blockInBack = World.GetBlock(newPosition);
+      PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
+      if (!blockInBack.Is<Empty>() && blockInBack.GetType() == typeof(WorldObjectBlock))
       {
-        if (block.GetType() != typeof(WorldObjectBlock)) return;
-        WorldObjectBlock worldObjectBlock = (WorldObjectBlock)(block);
+        WorldObjectBlock worldObjectBlock = (WorldObjectBlock)(blockInBack);
         var worldObject = worldObjectBlock.WorldObjectHandle.Object;
 
         // Skip if it's a conveyor
         if (worldObject.DisplayName == DisplayName) return;
 
         PublicStorageComponent back = worldObject.GetComponent<PublicStorageComponent>();
-        PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
         MoveFromTo(back, our);
+      }
+      else
+      {
+        var invToPullFrom = myInventories != null ? myInventories.FirstOrDefault() : null;
+        if (invToPullFrom != null && our != null)
+        {
+          OlolMoveFromTo(invToPullFrom, our.Storage);
+        }
       }
     }
 
@@ -224,17 +239,21 @@ namespace Eco.Mods.TechTree
       if (fromStorage == null) return;
 
       Inventory toStorage = to.Storage;
-      if (toStorage == null) return;
+      OlolMoveFromTo(fromStorage, toStorage);
+    }
+    private void OlolMoveFromTo(Inventory from, Inventory to)
+    {
+      if (to == null) return;
 
-      IEnumerable<ItemStack> stacks = fromStorage.Stacks;
+      IEnumerable<ItemStack> stacks = from.Stacks;
       ItemStack stack = GetFirstItemStackNotEmpty(stacks);
       if (stack == null) return;
 
       Item itemToGive = stack.Item;
       if (itemToGive == null) return;
 
-      int itemQuantity = stack.Quantity;
-      fromStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, toStorage);
+      int itemQuantity = DefaultDim.y;
+      from.TryMoveItems<Item>(itemToGive.Type, itemQuantity, to);
     }
 
     private bool isEmpty()
