@@ -111,15 +111,18 @@ namespace Eco.Mods.TechTree
       LinkComponent linkC = this.GetComponent<LinkComponent>();
       if (linkC != null)
       {
-        InventoryCollection invCol = linkC.GetSortedLinkedInventories(this.Parent.OwnerUser);
+        InventoryCollection invCol = linkC.GetSortedLinkedInventories(this.OwnerUser);
+        ChatManager.ServerMessageToAll(Localizer.Format("invCol {0}", invCol), false);
         if (invCol != null)
         {
-          IEnumerable<Inventory> inventories = invCol.SubInventories;
-          if (inventories != null && inventories.Length > 0)
-          {
-            // list of inventories
-            return;
-          }
+          // IEnumerable<Inventory> inventories = invCol.SubInventories;
+          // ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
+          // if (inventories != null && inventories.Length > 0)
+          // {
+          //   // list of inventories
+          //   ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inventories.Length), false);
+          //   return;
+          // }
         }
       }
       // var block = World.GetBlock(newPosition);
