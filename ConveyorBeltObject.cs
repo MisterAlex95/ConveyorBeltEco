@@ -119,7 +119,8 @@ namespace Eco.Mods.TechTree
         ChatManager.ServerMessageToAll(Localizer.Format("inventories {0}", inventories), false);
         foreach (var inv in inventories)
         {
-          if (inv.GetType() == typeof(AuthorizationInventory))
+          ChatManager.ServerMessageToAll(Localizer.Format("inv type, {0}", inv.GetType()), false);
+          if (inv.GetType() == typeof(AuthorizationInventory) || inv.GetType() == typeof(SelectionInventory))
           {
             ChatManager.ServerMessageToAll(Localizer.Format("Nbr of inv {0}", inv), false);
             if (!myInventories.Contains((Inventory)inv))
@@ -135,17 +136,14 @@ namespace Eco.Mods.TechTree
 
     private void PushFront()
     {
+      ChatManager.ServerMessageToAll(Localizer.Format("Will push front"), false);
       Vector3i newPosition = GetNextBlockPosition(false);
 
       var blockInFront = World.GetBlock(newPosition);
-      if (blockInFront.Is<Empty>())
-      {
-        // nothing in front of me
-        return;
-      }
+
       PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
 
-      if (blockInFront.GetType() == typeof(WorldObjectBlock))
+      if (!blockInFront.Is<Empty>() && blockInFront.GetType() == typeof(WorldObjectBlock))
       {
         // we have another conveyorbelt in front of us (or a not-filled stockpile)
         var obj = (WorldObjectBlock)(blockInFront);
@@ -201,7 +199,7 @@ namespace Eco.Mods.TechTree
       }
       else
       {
-        var invToPullFrom = myInventories != null ? myInventories.FirstOrDefault() : null;
+        var invToPullFrom = GetFirstNotEmptyInventory(myInventories);
         if (invToPullFrom != null && our != null)
         {
           MoveFromTo(invToPullFrom, our.Storage);
@@ -209,6 +207,15 @@ namespace Eco.Mods.TechTree
       }
     }
 
+    private Inventory GetFirstNotEmptyInventory(IEnumerable<Inventory> inventories)
+    {
+      if (myInventories == null) return null;
+      foreach (Inventory inv in inventories)
+      {
+        if (!inv.IsEmpty) return inv;
+      }
+      return null;
+    }
     private ItemStack GetFirstItemStackNotEmpty(IEnumerable<ItemStack> stacks)
     {
       foreach (ItemStack stack in stacks)
