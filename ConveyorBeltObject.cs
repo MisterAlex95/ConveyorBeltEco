@@ -135,48 +135,42 @@ namespace Eco.Mods.TechTree
 
     private void PushFront()
     {
-      var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
+      Vector3i newPosition = GetNextBlockPosition(false);
 
-      if (invToPushIn != null)
+      var block = World.GetBlock(newPosition);
+      if (!block.Is<Empty>())
       {
-        Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-        IEnumerable<ItemStack> stacks = our.Stacks;
-        ItemStack stack = stacks.FirstOrDefault();
-        if (stack != null)
+        PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
+
+        if (block.GetType() != typeof(WorldObjectBlock))
         {
-          Item itemToGive = stack.Item;
-          if (itemToGive != null && invToPushIn != null)
+          var invToPushIn = myInventories != null ? myInventories.FirstOrDefault() : null;
+          if (invToPushIn != null)
           {
-            int itemQuantity = stack.Quantity;
-            our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, invToPushIn);
+            Inventory ourStorage = our.Storage;
+            if (ourStorage == null) return;
+            IEnumerable<ItemStack> stacks = ourStorage.Stacks;
+            ItemStack stack = stacks.FirstOrDefault();
+            if (stack != null)
+            {
+              Item itemToGive = stack.Item;
+              if (itemToGive != null && invToPushIn != null)
+              {
+                int itemQuantity = stack.Quantity;
+                ourStorage.TryMoveItems<Item>(itemToGive.Type, itemQuantity, invToPushIn);
+              }
+            }
           }
-        }
-
-        foreach (Inventory linkedInv in myInventories)
-        {
-          ChatManager.ServerMessageToAll(Localizer.Format("ZOBIBI {0}", linkedInv), false);
-          ChatManager.ServerMessageToAll(Localizer.Format("=)==================="), false);
-
-        }
-      }
-      else
-      {
-        Vector3i newPosition = GetNextBlockPosition(false);
-
-        var block = World.GetBlock(newPosition);
-        if (!block.Is<Empty>())
-        {
-          if (block.GetType() != typeof(WorldObjectBlock))
+          else
           {
             ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
-            return;
           }
-          var obj = (WorldObjectBlock)(block);
-          var o = obj.WorldObjectHandle.Object;
-          PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-          PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
-          MoveFromTo(our, front);
+          return;
         }
+        var obj = (WorldObjectBlock)(block);
+        var o = obj.WorldObjectHandle.Object;
+        PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
+        MoveFromTo(our, front);
       }
     }
 
@@ -187,19 +181,14 @@ namespace Eco.Mods.TechTree
       var block = World.GetBlock(newPosition);
       if (!block.Is<Empty>())
       {
-        if (block.GetType() != typeof(WorldObjectBlock))
-        {
-          ChatManager.ServerMessageToAll(Localizer.Format("Object in back is not storage it's a {0}", block.GetType()), false);
-          return;
-        }
-        var obj = (WorldObjectBlock)(block);
-        var o = obj.WorldObjectHandle.Object;
+        if (block.GetType() != typeof(WorldObjectBlock)) return;
+        WorldObjectBlock worldObjectBlock = (WorldObjectBlock)(block);
+        var worldObject = worldObjectBlock.WorldObjectHandle.Object;
 
-        // If it's a conveyor skip
-        if (o.DisplayName == DisplayName)
-          return;
+        // Skip if it's a conveyor
+        if (worldObject.DisplayName == DisplayName) return;
 
-        PublicStorageComponent back = o.GetComponent<PublicStorageComponent>();
+        PublicStorageComponent back = worldObject.GetComponent<PublicStorageComponent>();
         PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
         MoveFromTo(back, our);
       }
