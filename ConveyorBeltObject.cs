@@ -108,34 +108,48 @@ namespace Eco.Mods.TechTree
       else if (_orientation == Orientation.WEST)
         newPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
 
-      var block = World.GetBlock(newPosition);
-      if (!block.Is<Empty>())
+      LinkComponent linkC = this.GetComponent<LinkComponent>();
+      if (linkC != null)
       {
-        if (block.GetType() != typeof(WorldObjectBlock))
+        InventoryCollection invCol = linkC.GetSortedLinkedInventories(this.Parent.OwnerUser);
+        if (invCol != null)
         {
-          ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
-          return;
-        }
-        var obj = (WorldObjectBlock)(block);
-        var o = obj.WorldObjectHandle.Object;
-        PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
-        if (front != null)
-        {
-          Inventory frontStorage = front.Storage;
-          Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
-          IEnumerable<ItemStack> stacks = our.Stacks;
-          ItemStack stack = stacks.FirstOrDefault();
-          if (stack != null)
+          IEnumerable<Inventory> inventories = invCol.SubInventories;
+          if (inventories != null && inventories.Length > 0)
           {
-            Item itemToGive = stack.Item;
-            if (itemToGive != null && frontStorage != null)
-            {
-              int itemQuantity = stack.Quantity;
-              our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
-            }
+            // list of inventories
+            return;
           }
         }
       }
+      // var block = World.GetBlock(newPosition);
+      // if (!block.Is<Empty>())
+      // {
+      //   if (block.GetType() != typeof(WorldObjectBlock))
+      //   {
+      //     ChatManager.ServerMessageToAll(Localizer.Format("Object in front is not storage"), false);
+      //     return;
+      //   }
+      //   var obj = (WorldObjectBlock)(block);
+      //   var o = obj.WorldObjectHandle.Object;
+      //   PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
+      //   if (front != null)
+      //   {
+      //     Inventory frontStorage = front.Storage;
+      //     Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
+      //     IEnumerable<ItemStack> stacks = our.Stacks;
+      //     ItemStack stack = stacks.FirstOrDefault();
+      //     if (stack != null)
+      //     {
+      //       Item itemToGive = stack.Item;
+      //       if (itemToGive != null && frontStorage != null)
+      //       {
+      //         int itemQuantity = stack.Quantity;
+      //         our.TryMoveItems<Item>(itemToGive.Type, itemQuantity, frontStorage);
+      //       }
+      //     }
+      //   }
+      // }
     }
 
     private void PullFromBack()
