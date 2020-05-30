@@ -89,7 +89,7 @@ namespace Eco.Mods.TechTree
 
 
       this.GetComponent<StockpileComponent>().Initialize(DefaultDim);
-      ChatManager.ServerMessageToAll(Localizer.Format("myInventories {0}", myInventories), false);
+      // ChatManager.ServerMessageToAll(Localizer.Format("myInventories {0}", myInventories), false);
 
       PublicStorageComponent storage = this.GetComponent<PublicStorageComponent>();
       storage.Initialize(DefaultDim.x * DefaultDim.z);
@@ -132,17 +132,14 @@ namespace Eco.Mods.TechTree
 
     private void PushFront()
     {
-      Vector3i newPosition = GetNextBlockPosition(false);
-
-      var blockInFront = World.GetBlock(newPosition);
+      WorldObjectBlock blockInFront = GetNextBlock(false);
 
       PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
 
-      if (!blockInFront.Is<Empty>() && blockInFront.GetType() == typeof(WorldObjectBlock))
+      if (blockInFront != null && !blockInFront.Is<Empty>())
       {
         // we have another conveyorbelt in front of us (or a not-filled stockpile)
-        var obj = (WorldObjectBlock)(blockInFront);
-        var o = obj.WorldObjectHandle.Object;
+        var o = blockInFront.WorldObjectHandle.Object;
         PublicStorageComponent front = o.GetComponent<PublicStorageComponent>();
         MoveFromTo(our, front);
       }
@@ -177,14 +174,12 @@ namespace Eco.Mods.TechTree
 
     private void PullFromBack()
     {
-      Vector3i newPosition = GetNextBlockPosition(true);
+      WorldObjectBlock blockInBack = GetNextBlock(true);
 
-      var blockInBack = World.GetBlock(newPosition);
       PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
-      if (!blockInBack.Is<Empty>() && blockInBack.GetType() == typeof(WorldObjectBlock))
+      if (blockInBack != null && !blockInBack.Is<Empty>())
       {
-        WorldObjectBlock worldObjectBlock = (WorldObjectBlock)(blockInBack);
-        var worldObject = worldObjectBlock.WorldObjectHandle.Object;
+        var worldObject = blockInBack.WorldObjectHandle.Object;
 
         // Skip if it's a conveyor
         if (worldObject.DisplayName == DisplayName) return;
@@ -220,17 +215,42 @@ namespace Eco.Mods.TechTree
       return null;
     }
 
-    private Vector3i GetNextBlockPosition(bool inverted)
+    private bool isAStorageComponent(Block block)
     {
+      return (!block.Is<Empty>() && block.GetType() == typeof(WorldObjectBlock) && ((WorldObjectBlock)block).WorldObjectHandle.Object.GetComponent<PublicStorageComponent>() != null);
+    }
+
+    private WorldObjectBlock GetNextBlock(bool inverted)
+    {
+      Vector3i wantedPosition;
       if ((!inverted && _orientation == Orientation.NORTH) || (inverted && _orientation == Orientation.SOUTH))
-        return new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
+        wantedPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z + 1);
       else if ((!inverted && _orientation == Orientation.EAST) || (inverted && _orientation == Orientation.WEST))
-        return new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
+        wantedPosition = new Vector3i(this.Position3i.x + 1, this.Position3i.y, this.Position3i.z);
       else if ((!inverted && _orientation == Orientation.SOUTH) || (inverted && _orientation == Orientation.NORTH))
-        return new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
+        wantedPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z - 1);
       else if ((!inverted && _orientation == Orientation.WEST) || (inverted && _orientation == Orientation.EAST))
-        return new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
-      return new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z);
+        wantedPosition = new Vector3i(this.Position3i.x - 1, this.Position3i.y, this.Position3i.z);
+      else
+        wantedPosition = new Vector3i(this.Position3i.x, this.Position3i.y, this.Position3i.z);
+
+      // check front then front-top then front-bottom
+      Block block = World.GetBlock(wantedPosition);
+      Block blockTop = World.GetBlock(wantedPosition + new Vector3i(0, 1, 0));
+      Block blockBottom = World.GetBlock(wantedPosition + new Vector3i(0, -1, 0));
+      if (isAStorageComponent(block))
+      {
+        return (WorldObjectBlock)block;
+      }
+      else if (isAStorageComponent(blockTop))
+      {
+        return (WorldObjectBlock)blockTop;
+      }
+      else if (isAStorageComponent(blockBottom))
+      {
+        return (WorldObjectBlock)blockBottom;
+      }
+      else return null;
     }
 
     private void MoveFromTo(PublicStorageComponent from, PublicStorageComponent to)
