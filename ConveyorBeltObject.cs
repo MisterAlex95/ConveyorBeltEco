@@ -1,45 +1,22 @@
 namespace Eco.Mods.TechTree
 {
   using System;
-  using System.Reflection;
   using System.Collections.Generic;
   using System.Linq;
-  using System.ComponentModel;
-
-  using Eco.Core.Utils;
-  using Eco.Core.Utils.AtomicAction;
 
   using Eco.Gameplay.Systems.Chat;
-  using Eco.Gameplay.Blocks;
   using Eco.Gameplay.Components;
   using Eco.Gameplay.Components.Auth;
-  using Eco.Gameplay.DynamicValues;
-  using Eco.Gameplay.Economy;
-  using Eco.Gameplay.Housing;
   using Eco.Gameplay.Interactions;
   using Eco.Gameplay.Items;
-  using Eco.Gameplay.Minimap;
   using Eco.Gameplay.Objects;
   using Eco.Gameplay.Players;
-  using Eco.Gameplay.Property;
-  using Eco.Gameplay.Skills;
-  using Eco.Gameplay.Systems.TextLinks;
-  using Eco.Gameplay.Pipes.LiquidComponents;
-  using Eco.Gameplay.Pipes.Gases;
-  using Eco.Gameplay.Systems.Tooltip;
-  using Eco.Shared;
   using Eco.Shared.Math;
   using Eco.Shared.Localization;
   using Eco.Shared.Serialization;
   using Eco.Shared.Utils;
-  using Eco.Shared.View;
-  using Eco.Shared.Items;
-  using Eco.Gameplay.Pipes;
   using Eco.World;
   using Eco.World.Blocks;
-  using Eco.Simulation.WorldLayers;
-  using Eco.Simulation.WorldLayers.Layers;
-  using Eco.Simulation.WorldLayers.Pushers;
 
   [Serialized]
   [RequireComponent(typeof(PropertyAuthComponent))]
@@ -101,7 +78,7 @@ namespace Eco.Mods.TechTree
     {
       if (updateThrottle.DoUpdate)
       {
-        if (this.isEmpty())
+        if (this.isConveyorEmpty())
           PullFromBack();
         else
           PushFront();
@@ -278,7 +255,7 @@ namespace Eco.Mods.TechTree
       from.TryMoveItems<Item>(itemToGive.Type, itemQuantity, to);
     }
 
-    private bool isEmpty()
+    private bool isConveyorEmpty()
     {
       Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
       return our.IsEmpty;
