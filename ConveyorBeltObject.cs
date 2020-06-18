@@ -2,12 +2,9 @@ namespace Eco.Mods.TechTree
 {
   using System;
   using System.Collections.Generic;
-  using System.Linq;
-
   using Eco.Gameplay.Systems.Chat;
   using Eco.Gameplay.Components;
   using Eco.Gameplay.Components.Auth;
-  using Eco.Gameplay.Interactions;
   using Eco.Gameplay.Items;
   using Eco.Gameplay.Objects;
   using Eco.Gameplay.Players;
@@ -15,8 +12,6 @@ namespace Eco.Mods.TechTree
   using Eco.Shared.Localization;
   using Eco.Shared.Serialization;
   using Eco.Shared.Utils;
-  using Eco.World;
-  using Eco.World.Blocks;
 
   [Serialized]
   [RequireComponent(typeof(PropertyAuthComponent))]
@@ -33,12 +28,9 @@ namespace Eco.Mods.TechTree
 
     private PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
     private Orientation _orientation = Orientation.NORTH;
-    private List<Inventory> myInventories = new List<Inventory>();
 
     private PublicStorageComponent front = null;
     private PublicStorageComponent back = null;
-
-    private bool done = false;
 
     private enum Orientation
     {
@@ -79,44 +71,24 @@ namespace Eco.Mods.TechTree
 
     public override void Tick()
     {
-      if (updateThrottle.DoUpdate)
+      try
       {
-        if (this.isConveyorEmpty())
+        if (updateThrottle.DoUpdate)
         {
-          if (back == null) this.initialize(true);
-          PullFromBack();
+          if (this.isConveyorEmpty())
+            PullFromBack();
+          else
+            PushFront();
         }
-        else
-        {
-          if (front == null) this.initialize(false);
-          PushFront();
-        }
+      }
+      catch (System.Exception ee)
+      {
+        front = null;
+        back = null;
       }
     }
 
-    public override InteractResult OnActInteract(InteractionContext context)
-    {
-      LinkComponent linkC = this.GetComponent<LinkComponent>();
-      InventoryCollection invCol = linkC.GetSortedLinkedInventories(context.Player.User);
-      if (invCol != null)
-      {
-        IEnumerable<Inventory> inventories = invCol.AllInventories;
-        foreach (var inv in inventories)
-        {
-          if (inv.GetType() == typeof(AuthorizationInventory) || inv.GetType() == typeof(SelectionInventory))
-          {
-            if (!myInventories.Contains((Inventory)inv))
-            {
-              myInventories.Add((Inventory)inv);
-            }
-          }
-        }
-      }
-
-      return base.OnActInteract(context);
-    }
-
-    private void initialize(bool inverted)
+    private void UpdateBlock(bool inverted)
     {
       Vector3i wantedPosition;
       if ((!inverted && _orientation == Orientation.NORTH) || (inverted && _orientation == Orientation.SOUTH))
@@ -135,20 +107,33 @@ namespace Eco.Mods.TechTree
       Vector3i blockBottom = wantedPosition + new Vector3i(0, -1, 0);
 
       IEnumerable<WorldObject> list = WorldObjectManager.GetObjectsWithin(this.Position3i, 5f);
+      if (list == null) return;
       foreach (WorldObject item in list)
       {
+        if (item == null) return;
+
         List<Vector3i> occupancy = item.WorldOccupancy;
+        if (occupancy == null) return;
+
         foreach (Vector3i position in occupancy)
         {
-          if (inverted == false)
+          if (!inverted)
           {
             if (front == null && (position == wantedPosition || position == blockTop || position == blockBottom))
+            {
               front = item.GetComponent<PublicStorageComponent>();
+              ChatManager.ServerMessageToAll(Localizer.Format("UPDATE FRONT {0}", front), true);
+              return;
+            }
           }
           else
           {
             if (back == null && (position == wantedPosition || position == blockTop || position == blockBottom))
+            {
               back = item.GetComponent<PublicStorageComponent>();
+              ChatManager.ServerMessageToAll(Localizer.Format("UPDATE BACK {0}", back), true);
+              return;
+            }
           }
         }
       }
@@ -156,20 +141,30 @@ namespace Eco.Mods.TechTree
 
     private void PushFront()
     {
+      if (front == null || !(front is PublicStorageComponent) || !front.Enabled)
+      {
+        front = null;
+        this.UpdateBlock(false);
+      }
       PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
-      if (front != null) MoveFromTo(our, front);
+      MoveFromTo(our, front);
     }
     private void PullFromBack()
     {
+      if (back == null || !(back is PublicStorageComponent) || !back.Enabled)
+      {
+        back = null;
+        this.UpdateBlock(true);
+      }
       PublicStorageComponent our = this.GetComponent<PublicStorageComponent>();
-      if (back != null) MoveFromTo(back, our);
+      MoveFromTo(back, our);
     }
 
     private ItemStack GetFirstItemStackNotEmpty(IEnumerable<ItemStack> stacks)
     {
       foreach (ItemStack stack in stacks)
       {
-        if (!stack.Empty) return stack;
+        if (stack != null && !stack.Empty) return stack;
       }
       return null;
     }
@@ -182,13 +177,17 @@ namespace Eco.Mods.TechTree
       if (fromStorage == null) return;
 
       Inventory toStorage = to.Storage;
+      if (toStorage == null) return;
+
       MoveFromTo(fromStorage, toStorage);
     }
     private void MoveFromTo(Inventory from, Inventory to)
     {
-      if (to == null) return;
+      if (from == null || to == null) return;
 
       IEnumerable<ItemStack> stacks = from.Stacks;
+      if (stacks == null) return;
+
       ItemStack stack = GetFirstItemStackNotEmpty(stacks);
       if (stack == null) return;
 
