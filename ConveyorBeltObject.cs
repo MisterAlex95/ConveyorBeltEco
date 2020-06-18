@@ -34,6 +34,9 @@ namespace Eco.Mods.TechTree
     private PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
     private Orientation _orientation = Orientation.NORTH;
     private List<Inventory> myInventories = new List<Inventory>();
+
+    private bool done = false;
+
     private enum Orientation
     {
       NORTH = 0,
@@ -76,6 +79,10 @@ namespace Eco.Mods.TechTree
 
     public override void Tick()
     {
+      if (!done)
+      {
+        this.initialize();
+      }
       if (updateThrottle.DoUpdate)
       {
         if (this.isConveyorEmpty())
@@ -105,6 +112,16 @@ namespace Eco.Mods.TechTree
       }
 
       return base.OnActInteract(context);
+    }
+
+    private void initialize()
+    {
+      IEnumerable<WorldObject> list = WorldObjectManager.GetObjectsWithin(this.Position3i, 5f);
+      foreach (WorldObject item in list)
+      {
+        ChatManager.ServerMessageToAll(Localizer.Format("INIT {0}", item), true);
+      }
+      done = true;
     }
 
     private void PushFront()
