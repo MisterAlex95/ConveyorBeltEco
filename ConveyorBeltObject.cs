@@ -122,7 +122,7 @@ namespace Eco.Mods.TechTree
             if (front == null && (position == wantedPosition || position == blockTop || position == blockBottom))
             {
               front = item.GetComponent<PublicStorageComponent>();
-              ChatManager.ServerMessageToAll(Localizer.Format("UPDATE FRONT {0}", front), true);
+              // ChatManager.ServerMessageToAll(Localizer.Format("UPDATE FRONT {0}", front), true);
               return;
             }
           }
@@ -131,7 +131,7 @@ namespace Eco.Mods.TechTree
             if (back == null && (position == wantedPosition || position == blockTop || position == blockBottom))
             {
               back = item.GetComponent<PublicStorageComponent>();
-              ChatManager.ServerMessageToAll(Localizer.Format("UPDATE BACK {0}", back), true);
+              // ChatManager.ServerMessageToAll(Localizer.Format("UPDATE BACK {0}", back), true);
               return;
             }
           }
