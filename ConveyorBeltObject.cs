@@ -20,6 +20,7 @@ namespace Eco.Mods.TechTree
   [RequireComponent(typeof(WorldStockpileComponent))]
   [RequireComponent(typeof(LinkComponent))]
   [RequireComponent(typeof(StorageComponent))]
+  [RequireComponent(typeof(OnOffComponent))]
   public partial class ConveyorBeltObject : WorldObject, IChatCommandHandler
   {
     public static readonly Vector3i DefaultDim = new Vector3i(1, 1, 1);
@@ -28,6 +29,7 @@ namespace Eco.Mods.TechTree
 
     private PeriodicUpdateRealTime updateThrottle = new PeriodicUpdateRealTime(1);
     private Orientation _orientation = Orientation.NORTH;
+    private OnOffComponent onOff = null;
 
     private PublicStorageComponent front = null;
     private PublicStorageComponent back = null;
@@ -62,6 +64,7 @@ namespace Eco.Mods.TechTree
 
 
       this.GetComponent<StockpileComponent>().Initialize(DefaultDim);
+      this.onOff = this.GetComponent<OnOffComponent>();
 
       PublicStorageComponent storage = this.GetComponent<PublicStorageComponent>();
       storage.Initialize(DefaultDim.x * DefaultDim.z);
@@ -71,17 +74,22 @@ namespace Eco.Mods.TechTree
 
     public override void Tick()
     {
+      if (!this.onOff.On) return;
       try
       {
         if (updateThrottle.DoUpdate)
         {
-          if (this.isConveyorEmpty())
-            PullFromBack();
+          if (!this.isConveyorBelt(back) && this.isConveyorEmpty())
+          {
+            this.PullFromBack();
+          }
           else
-            PushFront();
+          {
+            this.PushFront();
+          }
         }
       }
-      catch (System.Exception ee)
+      catch (System.Exception)
       {
         front = null;
         back = null;
@@ -122,7 +130,7 @@ namespace Eco.Mods.TechTree
             if (front == null && (position == wantedPosition || position == blockTop || position == blockBottom))
             {
               front = item.GetComponent<PublicStorageComponent>();
-              // ChatManager.ServerMessageToAll(Localizer.Format("UPDATE FRONT {0}", front), true);
+              // ChatManager.ServerMessageToAll(Localizer.Format("WHAT IT IS FROM ? {0}", con.GetStatus()), true);
               return;
             }
           }
@@ -202,6 +210,11 @@ namespace Eco.Mods.TechTree
     {
       Inventory our = this.GetComponent<PublicStorageComponent>().Storage;
       return our.IsEmpty;
+    }
+    private bool isConveyorBelt(PublicStorageComponent conveyor)
+    {
+      if (conveyor == null || conveyor.Parent == null || !(conveyor.Parent is ConveyorBeltObject)) return false;
+      return true;
     }
   }
 }
